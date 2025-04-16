@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>SensorCAPTCHA</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      background: #f2f2f2;
+      text-align: center;
+    }
+
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .captcha-shape, .target {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+    }
+
+    .captcha-shape {
+      background: #007bff;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      transition: background 0.3s;
+    }
+
+    .target {
+      background: #28a745;
+    }
+
+    #message {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div class="captcha-shape" id="shape"></div>
+    <div class="target" id="target"></div>
+    <div id="message">Tilt your phone to move the shape into the green square.</div>
+  </div>
+
+  <script>
+    const shape = document.getElementById('shape');
+    const target = document.getElementById('target');
+    const message = document.getElementById('message');
+
+    let pos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    const speed = 1.5;
+
+    // Random target position
+    const targetPos = {
+      x: Math.random() * (window.innerWidth - 50),
+      y: Math.random() * (window.innerHeight - 150) + 50
+    };
+
+    target.style.left = targetPos.x + 'px';
+    target.style.top = targetPos.y + 'px';
+
+    function updateShapePosition() {
+      shape.style.left = pos.x + 'px';
+      shape.style.top = pos.y + 'px';
+
+      const dx = pos.x - targetPos.x;
+      const dy = pos.y - targetPos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < 30) {
+        message.textContent = "CAPTCHA Passed!";
+        shape.style.background = "#28a745";
+        window.removeEventListener('devicemotion', motionHandler);
+      }
+    }
+
+    function motionHandler(event) {
+      const ax = event.accelerationIncludingGravity.x;
+      const ay = event.accelerationIncludingGravity.y;
+
+      pos.x -= ax * speed;
+      pos.y += ay * speed;
+
+      // Clamp within screen
+      pos.x = Math.max(0, Math.min(window.innerWidth - 50, pos.x));
+      pos.y = Math.max(0, Math.min(window.innerHeight - 50, pos.y));
+
+      updateShapePosition();
+    }
+
+    // Request permission for iOS
+    function initSensorCaptcha() {
+      if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission().then(permissionState => {
+          if (permissionState === 'granted') {
+            window.addEventListener('devicemotion', motionHandler);
+          } else {
+            message.textContent = "Motion permission denied.";
+          }
+        }).catch(console.error);
+      } else {
+        // Android
+        window.addEventListener('devicemotion', motionHandler);
+      }
+    }
+
+    window.addEventListener('click', initSensorCaptcha);
+  </script>
+</body>
+</html>
