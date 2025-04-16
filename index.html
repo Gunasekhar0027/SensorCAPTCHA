@@ -1,29 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>SensorCAPTCHA</title>
   <style>
     body {
       margin: 0;
-      overflow: hidden;
-      font-family: sans-serif;
-      background: #f2f2f2;
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
       display: flex;
-      justify-content: center;
-      align-items: center;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
       height: 100vh;
+      overflow: hidden;
+    }
+
+    #startButton {
+      padding: 15px 25px;
+      font-size: 18px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 20px;
     }
 
     #game {
       position: relative;
-      width: 100vw;
-      height: 80vh;
-      background: #fff;
+      width: 90vw;
+      height: 70vh;
+      background: white;
       border: 2px solid #ccc;
+      border-radius: 10px;
       overflow: hidden;
+      display: none;
     }
 
     .captcha-shape, .target {
@@ -34,57 +47,51 @@
     }
 
     .captcha-shape {
-      background: #007bff;
+      background-color: #007bff;
     }
 
     .target {
-      background: #28a745;
+      background-color: #28a745;
     }
 
     #message {
       margin-top: 15px;
-      font-size: 1em;
-      color: #333;
+      font-size: 1.2em;
+      text-align: center;
     }
 
-    #startButton {
-      padding: 10px 20px;
-      font-size: 1em;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      margin-bottom: 10px;
+    #doneView {
+      display: none;
+      font-size: 1.5em;
+      color: #28a745;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
   <button id="startButton">Start CAPTCHA</button>
-  <div id="game" style="display:none;">
+
+  <div id="game">
     <div class="captcha-shape" id="shape"></div>
     <div class="target" id="target"></div>
   </div>
-  <div id="message">Click "Start CAPTCHA" to begin.</div>
+
+  <div id="message">Click "Start CAPTCHA" to allow motion access.</div>
+  <div id="doneView">✅ CAPTCHA Done!</div>
 
   <script>
+    const startButton = document.getElementById('startButton');
+    const game = document.getElementById('game');
     const shape = document.getElementById('shape');
     const target = document.getElementById('target');
-    const game = document.getElementById('game');
     const message = document.getElementById('message');
-    const startButton = document.getElementById('startButton');
+    const doneView = document.getElementById('doneView');
 
-    let pos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let pos = { x: 0, y: 0 };
     const speed = 1.5;
-
-    // Random target position
-    const targetPos = {
-      x: Math.random() * (window.innerWidth - 50),
-      y: Math.random() * (window.innerHeight * 0.8 - 50)
-    };
-
-    target.style.left = targetPos.x + 'px';
-    target.style.top = targetPos.y + 'px';
+    let gameBounds;
+    const targetPos = { x: 0, y: 0 };
 
     function updateShapePosition() {
       shape.style.left = pos.x + 'px';
@@ -95,47 +102,72 @@
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance < 30) {
-        message.textContent = "CAPTCHA Passed!";
-        shape.style.background = "#28a745";
-        window.removeEventListener('devicemotion', motionHandler);
+        onCaptchaSuccess();
+        window.removeEventListener('devicemotion', handleMotion);
       }
     }
 
-    function motionHandler(event) {
+    function handleMotion(event) {
       const ax = event.accelerationIncludingGravity.x;
       const ay = event.accelerationIncludingGravity.y;
 
       pos.x -= ax * speed;
       pos.y += ay * speed;
 
-      pos.x = Math.max(0, Math.min(window.innerWidth - 50, pos.x));
-      pos.y = Math.max(0, Math.min(window.innerHeight * 0.8 - 50, pos.y));
+      pos.x = Math.max(0, Math.min(gameBounds.width - 50, pos.x));
+      pos.y = Math.max(0, Math.min(gameBounds.height - 50, pos.y));
 
       updateShapePosition();
     }
 
     async function startSensorCaptcha() {
+      // iOS permission
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
-          const response = await DeviceMotionEvent.requestPermission();
-          if (response !== 'granted') {
-            message.textContent = "Motion permission denied.";
+          const permission = await DeviceMotionEvent.requestPermission();
+          if (permission !== 'granted') {
+            message.textContent = "❌ Motion permission denied.";
             return;
           }
         } catch (e) {
-          message.textContent = "Error requesting motion permission.";
+          message.textContent = "❌ Error requesting permission.";
           return;
         }
       }
 
-      startButton.style.display = "none";
-      game.style.display = "block";
-      message.textContent = "Tilt your phone to move the shape into the green square.";
-      window.addEventListener('devicemotion', motionHandler);
+      // Start game
+      startButton.style.display = 'none';
+      game.style.display = 'block';
+      message.textContent = "🎯 Tilt your phone to move the blue box into the green square.";
+
+      gameBounds = game.getBoundingClientRect();
+
+      // Position shape on the far left
+      pos.x = 10;
+      pos.y = gameBounds.height / 2 - 25;
+
+      // Position target on the far right
+      targetPos.x = gameBounds.width - 60;
+      targetPos.y = gameBounds.height / 2 - 25;
+
+      shape.style.left = pos.x + 'px';
+      shape.style.top = pos.y + 'px';
+
+      target.style.left = targetPos.x + 'px';
+      target.style.top = targetPos.y + 'px';
+
+      window.addEventListener('devicemotion', handleMotion);
+    }
+
+    // ✅ Callback when CAPTCHA is completed
+    function onCaptchaSuccess() {
+      game.style.display = 'none';
+      doneView.style.display = 'block';
+      message.textContent = "";
+      console.log("CAPTCHA completed ✅");
     }
 
     startButton.addEventListener('click', startSensorCaptcha);
   </script>
-
 </body>
 </html>
