@@ -111,8 +111,9 @@
       const ax = event.accelerationIncludingGravity.x;
       const ay = event.accelerationIncludingGravity.y;
 
-      pos.x -= ax * speed;
-      pos.y += ay * speed;
+      // 🧭 Reversed movement direction
+      pos.x += ax * speed; // right tilt → move left
+      pos.y -= ay * speed; // down tilt → move up
 
       pos.x = Math.max(0, Math.min(gameBounds.width - 50, pos.x));
       pos.y = Math.max(0, Math.min(gameBounds.height - 50, pos.y));
@@ -121,7 +122,6 @@
     }
 
     async function startSensorCaptcha() {
-      // iOS permission
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
           const permission = await DeviceMotionEvent.requestPermission();
@@ -135,18 +135,15 @@
         }
       }
 
-      // Start game
       startButton.style.display = 'none';
       game.style.display = 'block';
-      message.textContent = "🎯 Tilt your phone to move the blue box into the green square.";
+      message.textContent = "🎯 Tilt your phone (reversed) to move blue box into green target.";
 
       gameBounds = game.getBoundingClientRect();
 
-      // Position shape on the far left
       pos.x = 10;
       pos.y = gameBounds.height / 2 - 25;
 
-      // Position target on the far right
       targetPos.x = gameBounds.width - 60;
       targetPos.y = gameBounds.height / 2 - 25;
 
@@ -159,12 +156,11 @@
       window.addEventListener('devicemotion', handleMotion);
     }
 
-    // ✅ Callback when CAPTCHA is completed
     function onCaptchaSuccess() {
       game.style.display = 'none';
       doneView.style.display = 'block';
       message.textContent = "";
-      console.log("CAPTCHA completed ✅");
+      console.log("✅ CAPTCHA completed!");
     }
 
     startButton.addEventListener('click', startSensorCaptcha);
