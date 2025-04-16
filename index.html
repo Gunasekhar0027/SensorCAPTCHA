@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
   <title>SensorCAPTCHA</title>
   <style>
     body {
@@ -10,13 +10,20 @@
       overflow: hidden;
       font-family: sans-serif;
       background: #f2f2f2;
-      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
     }
 
     #game {
       position: relative;
       width: 100vw;
-      height: 100vh;
+      height: 80vh;
+      background: #fff;
+      border: 2px solid #ccc;
+      overflow: hidden;
     }
 
     .captcha-shape, .target {
@@ -28,10 +35,6 @@
 
     .captcha-shape {
       background: #007bff;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      transition: background 0.3s;
     }
 
     .target {
@@ -39,24 +42,37 @@
     }
 
     #message {
-      position: absolute;
-      bottom: 20px;
-      width: 100%;
-      font-size: 1.2em;
+      margin-top: 15px;
+      font-size: 1em;
+      color: #333;
+    }
+
+    #startButton {
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
-  <div id="game">
+
+  <button id="startButton">Start CAPTCHA</button>
+  <div id="game" style="display:none;">
     <div class="captcha-shape" id="shape"></div>
     <div class="target" id="target"></div>
-    <div id="message">Tilt your phone to move the shape into the green square.</div>
   </div>
+  <div id="message">Click "Start CAPTCHA" to begin.</div>
 
   <script>
     const shape = document.getElementById('shape');
     const target = document.getElementById('target');
+    const game = document.getElementById('game');
     const message = document.getElementById('message');
+    const startButton = document.getElementById('startButton');
 
     let pos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     const speed = 1.5;
@@ -64,7 +80,7 @@
     // Random target position
     const targetPos = {
       x: Math.random() * (window.innerWidth - 50),
-      y: Math.random() * (window.innerHeight - 150) + 50
+      y: Math.random() * (window.innerHeight * 0.8 - 50)
     };
 
     target.style.left = targetPos.x + 'px';
@@ -92,30 +108,34 @@
       pos.x -= ax * speed;
       pos.y += ay * speed;
 
-      // Clamp within screen
       pos.x = Math.max(0, Math.min(window.innerWidth - 50, pos.x));
-      pos.y = Math.max(0, Math.min(window.innerHeight - 50, pos.y));
+      pos.y = Math.max(0, Math.min(window.innerHeight * 0.8 - 50, pos.y));
 
       updateShapePosition();
     }
 
-    // Request permission for iOS
-    function initSensorCaptcha() {
+    async function startSensorCaptcha() {
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        DeviceMotionEvent.requestPermission().then(permissionState => {
-          if (permissionState === 'granted') {
-            window.addEventListener('devicemotion', motionHandler);
-          } else {
+        try {
+          const response = await DeviceMotionEvent.requestPermission();
+          if (response !== 'granted') {
             message.textContent = "Motion permission denied.";
+            return;
           }
-        }).catch(console.error);
-      } else {
-        // Android
-        window.addEventListener('devicemotion', motionHandler);
+        } catch (e) {
+          message.textContent = "Error requesting motion permission.";
+          return;
+        }
       }
+
+      startButton.style.display = "none";
+      game.style.display = "block";
+      message.textContent = "Tilt your phone to move the shape into the green square.";
+      window.addEventListener('devicemotion', motionHandler);
     }
 
-    window.addEventListener('click', initSensorCaptcha);
+    startButton.addEventListener('click', startSensorCaptcha);
   </script>
+
 </body>
 </html>
