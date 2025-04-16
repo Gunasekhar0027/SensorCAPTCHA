@@ -1,42 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
   <title>SensorCAPTCHA</title>
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       overflow: hidden;
-    }
-
-    #startButton {
-      padding: 15px 25px;
-      font-size: 18px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-bottom: 20px;
+      font-family: sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
     }
 
     #game {
       position: relative;
-      width: 90vw;
-      height: 70vh;
-      background: white;
+      width: 100vw;
+      height: 80vh;
+      background: #fff;
       border: 2px solid #ccc;
-      border-radius: 10px;
       overflow: hidden;
-      display: none;
     }
 
     .captcha-shape, .target {
@@ -47,44 +34,53 @@
     }
 
     .captcha-shape {
-      background-color: #007bff;
+      background: #007bff;
     }
 
     .target {
-      background-color: #28a745;
+      background: #28a745;
     }
 
     #message {
       margin-top: 15px;
-      font-size: 1.2em;
-      text-align: center;
+      font-size: 1em;
+      color: #333;
+    }
+
+    #startButton {
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
 
   <button id="startButton">Start CAPTCHA</button>
-  <div id="game">
+  <div id="game" style="display:none;">
     <div class="captcha-shape" id="shape"></div>
     <div class="target" id="target"></div>
   </div>
-  <div id="message">Click "Start CAPTCHA" to allow motion access.</div>
+  <div id="message">Click "Start CAPTCHA" to begin.</div>
 
   <script>
-    const startButton = document.getElementById('startButton');
-    const game = document.getElementById('game');
     const shape = document.getElementById('shape');
     const target = document.getElementById('target');
+    const game = document.getElementById('game');
     const message = document.getElementById('message');
+    const startButton = document.getElementById('startButton');
 
     let pos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     const speed = 1.5;
 
-    // Generate a random target position
-    const gameBounds = game.getBoundingClientRect();
+    // Random target position
     const targetPos = {
-      x: Math.random() * (gameBounds.width - 50),
-      y: Math.random() * (gameBounds.height - 50)
+      x: Math.random() * (window.innerWidth - 50),
+      y: Math.random() * (window.innerHeight * 0.8 - 50)
     };
 
     target.style.left = targetPos.x + 'px';
@@ -99,55 +95,47 @@
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance < 30) {
-        message.textContent = "✅ CAPTCHA Passed!";
+        message.textContent = "CAPTCHA Passed!";
         shape.style.background = "#28a745";
-        window.removeEventListener('devicemotion', handleMotion);
+        window.removeEventListener('devicemotion', motionHandler);
       }
     }
 
-    function handleMotion(event) {
+    function motionHandler(event) {
       const ax = event.accelerationIncludingGravity.x;
       const ay = event.accelerationIncludingGravity.y;
 
       pos.x -= ax * speed;
       pos.y += ay * speed;
 
-      // Clamp to game box
-      pos.x = Math.max(0, Math.min(gameBounds.width - 50, pos.x));
-      pos.y = Math.max(0, Math.min(gameBounds.height - 50, pos.y));
+      pos.x = Math.max(0, Math.min(window.innerWidth - 50, pos.x));
+      pos.y = Math.max(0, Math.min(window.innerHeight * 0.8 - 50, pos.y));
 
       updateShapePosition();
     }
 
     async function startSensorCaptcha() {
-      // Request permission on iOS
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
-          const permission = await DeviceMotionEvent.requestPermission();
-          if (permission !== 'granted') {
-            message.textContent = "❌ Permission denied. Please allow motion access.";
+          const response = await DeviceMotionEvent.requestPermission();
+          if (response !== 'granted') {
+            message.textContent = "Motion permission denied.";
             return;
           }
-        } catch (err) {
-          message.textContent = "❌ Error requesting permission.";
+        } catch (e) {
+          message.textContent = "Error requesting motion permission.";
           return;
         }
       }
 
-      // Start game
-      startButton.style.display = 'none';
-      game.style.display = 'block';
-      message.textContent = "🎯 Tilt your phone to move the blue box into the green square.";
-
-      pos = {
-        x: gameBounds.width / 2,
-        y: gameBounds.height / 2
-      };
-      updateShapePosition();
-      window.addEventListener('devicemotion', handleMotion);
+      startButton.style.display = "none";
+      game.style.display = "block";
+      message.textContent = "Tilt your phone to move the shape into the green square.";
+      window.addEventListener('devicemotion', motionHandler);
     }
 
     startButton.addEventListener('click', startSensorCaptcha);
   </script>
+
 </body>
 </html>
